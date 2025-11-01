@@ -5,13 +5,11 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-// Configuración
 const app = express();
 const PORT = process.env.PORT || 3000;
 const HF_TOKEN = process.env.HF_TOKEN;
 const HF_MODEL = process.env.HF_MODEL;
 
-// Crear cliente Discord
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -20,12 +18,13 @@ const client = new Client({
   ],
 });
 
-// Mensaje al iniciar
 client.once("ready", () => {
   console.log(`✅ AaronGPT conectado como ${client.user.tag}`);
 });
 
-// Función para consultar Hugging Face
+// Evitar duplicados
+const processingMessages = new Set();
+
 async function askHuggingFace(prompt) {
   try {
     const response = await fetch(
@@ -45,25 +44,21 @@ async function askHuggingFace(prompt) {
     }
 
     const data = await response.json();
-
-    // Algunos modelos devuelven array, otros texto directo
-    return data[0]?.generated_text || data.generated_text || "No pude generar respuesta 😅";
+    // GPT2 devuelve array con generated_text
+    if (Array.isArray(data)) return data[0]?.generated_text || "No pude generar respuesta 😅";
+    return data.generated_text || "No pude generar respuesta 😅";
   } catch (error) {
     console.error("❌ Error Hugging Face:", error);
     return "Ocurrió un error al procesar tu mensaje 😔";
   }
 }
 
-// Evitar duplicados: solo procesar un mensaje a la vez
-const processingMessages = new Set();
-
-// Escucha mensajes en Discord
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
 
   if (message.content.startsWith("!aaron")) {
     const messageId = message.id;
-    if (processingMessages.has(messageId)) return; // evita duplicados
+    if (processingMessages.has(messageId)) return;
     processingMessages.add(messageId);
 
     const prompt = message.content.replace("!aaron", "").trim();
@@ -73,7 +68,6 @@ client.on("messageCreate", async (message) => {
     }
 
     await message.channel.sendTyping();
-
     const respuesta = await askHuggingFace(prompt);
     await message.reply(respuesta);
 
@@ -81,9 +75,8 @@ client.on("messageCreate", async (message) => {
   }
 });
 
-// Servidor web para mantener Render activo
+// Servidor web para Render
 app.get("/", (req, res) => res.send("✅ AaronGPT está en línea."));
 app.listen(PORT, () => console.log(`Servidor web escuchando en el puerto ${PORT}`));
 
-// Inicia sesión en Discord
 client.login(process.env.DISCORD_TOKEN);
