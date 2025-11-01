@@ -1,11 +1,14 @@
+// index.js
 import { Client, GatewayIntentBits } from "discord.js";
 import express from "express";
 import fetch from "node-fetch";
+import dotenv from "dotenv";
 
+dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ==================== Ask Hugging Face ====================
+// ==================== Hugging Face =======================
 async function askHuggingFace(prompt) {
   try {
     const res = await fetch(`https://api-inference.huggingface.co/models/${process.env.HF_MODEL}`, {
@@ -51,7 +54,28 @@ client.on("messageCreate", async (message) => {
   if (message.content.startsWith("!aaron")) {
     await message.channel.sendTyping();
     const prompt = message.content.replace("!aaron", "").trim();
-    const hfResponse = await askHuggingFace(prompt);
+
+    // Personalidad de Aaron
+    const lowerPrompt = prompt.toLowerCase();
+    let personalityReply = null;
+    if (lowerPrompt.includes("dónde está aaron")) {
+      personalityReply = "Aaron está ocupado viendo películas negras 😎";
+    } else if (lowerPrompt.includes("en qué salón va aaron")) {
+      personalityReply = "Aaron va en el salón 221 📚";
+    } else if (lowerPrompt.includes("cómo es aaron")) {
+      personalityReply = "Aaron es un femboy que le gusta ver películas de negros 😏";
+    }
+
+    let hfResponse = "";
+    if (!personalityReply) {
+      const hfText = await askHuggingFace(prompt);
+      // Aaron da solo 50% de la respuesta y luego indica preguntar al otro 50%
+      const splitIndex = Math.floor(hfText.length / 2);
+      hfResponse = hfText.slice(0, splitIndex) + "... pregunta el otro 50% a Aaron 🤖";
+    } else {
+      hfResponse = personalityReply;
+    }
+
     await message.reply(hfResponse);
   }
 });
