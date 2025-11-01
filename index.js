@@ -1,19 +1,15 @@
 import { Client, GatewayIntentBits } from "discord.js";
-import dotenv from "dotenv";
 import express from "express";
 import fetch from "node-fetch";
+import dotenv from "dotenv";
 
 dotenv.config();
 
-// ---------------------------
-// Servidor Express para Render
 const app = express();
 const PORT = process.env.PORT || 3000;
-app.get("/", (req, res) => res.send("AaronGPT activo con HF 😎"));
-app.listen(PORT, () => console.log(`Servidor escuchando en puerto ${PORT}`));
+const HF_TOKEN = process.env.HF_TOKEN;
+const HF_MODEL = process.env.HF_MODEL;
 
-// ---------------------------
-// Inicializar Discord
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -22,56 +18,47 @@ const client = new Client({
   ],
 });
 
-// ---------------------------
-// Función para llamar Hugging Face
-async function askHFModel(prompt) {
+client.once("ready", () => {
+  console.log(`✅ AaronGPT conectado como ${client.user.tag}`);
+});
+
+async function askHuggingFace(prompt) {
   try {
-    const res = await fetch("https://api-inference.huggingface.co/models/gpt2", {
+    const response = await fetch(`https://api-inference.huggingface.co/models/${HF_MODEL}`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${process.env.HF_TOKEN}`,
+        Authorization: `Bearer ${HF_TOKEN}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ inputs: prompt }),
     });
 
-    if (!res.ok) {
-      const txt = await res.text();
-      console.error(`HF error: ${res.status} ${txt}`);
-      return "Aaron está ocupado, inténtalo más tarde 😅";
+    if (!response.ok) {
+      throw new Error(`HF error: ${response.status} ${await response.text()}`);
     }
 
-    const data = await res.json();
-    // El output de HF puede variar según el modelo
-    if (Array.isArray(data) && data[0]?.generated_text) {
-      return data[0].generated_text;
-    }
-    return "Aaron no pudo generar una respuesta 😅";
-  } catch (err) {
-    console.error("Error Hugging Face:", err);
-    return "Aaron está ocupado, inténtalo más tarde 😅";
+    const data = await response.json();
+    return data[0]?.generated_text || data.generated_text || "No recibí respuesta 😅";
+  } catch (error) {
+    console.error("❌ Error Hugging Face:", error);
+    return "Ocurrió un error al conectar con mi núcleo 😔";
   }
 }
 
-// ---------------------------
-// Listener !aaron
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
-  if (!message.content.toLowerCase().startsWith("!aaron")) return;
 
-  const pregunta = message.content.slice(6).trim();
-  if (!pregunta) return message.reply("Escribe algo después de !aaron 😎");
+  if (message.content.startsWith("!aaron")) {
+    const prompt = message.content.replace("!aaron", "").trim();
+    if (!prompt) return message.reply("Escribe algo después de !aaron para preguntarme.");
 
-  // Personalidad Aaron: 50% respuesta + HF
-  let preRespuesta = "Aaron solo usa el 50% de su poder 😏\n";
-  const hfRespuesta = await askHFModel(pregunta);
-  message.reply(preRespuesta + hfRespuesta);
+    await message.channel.sendTyping();
+    const respuesta = await askHuggingFace(prompt);
+    message.reply(respuesta);
+  }
 });
 
-// ---------------------------
-// Login Discord
+app.get("/", (req, res) => res.send("✅ AaronGPT está en línea."));
+app.listen(PORT, () => console.log(`Servidor web escuchando en el puerto ${PORT}`));
+
 client.login(process.env.DISCORD_TOKEN);
-
-client.on("ready", () => {
-  console.log(`✅ AaronGPT conectado como ${client.user.tag}`);
-});

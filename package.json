@@ -7,9 +7,22 @@
     "start": "node index.js"
   },
   "dependencies": {
-    "discord.js": "^14.15.3",
-    "dotenv": "^16.4.5",
+    "discord.js": "^14.24.2",
+    "dotenv": "^16.6.1",
     "express": "^5.1.0",
     "node-fetch": "^3.3.2"
-  }
+  },
+  "description": "",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mrppsi/web.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mrppsi/web/issues"
+  },
+  "homepage": "https://github.com/mrppsi/web#readme",
+  "devDependencies": {}
 }
